@@ -16,3 +16,5 @@ Imports:
     stats,
     tictoc
 LinkingTo: Rcpp, RcppArmadillo
+URL: https://github.com/GoldenBaozi/VARS
+BugReports: https://github.com/GoldenBaozi/VARS/issues
