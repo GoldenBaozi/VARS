@@ -1,0 +1,13 @@
+# Makevars.win (Windows-specific)
+
+# Ensure you're using the correct C++ standard (C++11 or later)
+CXX_STD = CXX11
+
+# Include directories
+# CXXFLAGS = $(SHLIB_CXXFLAGS) -I$(R_HOME)/include -I../inst/include -I./
+
+# Linking libraries
+PKG_LIBS = $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+
+# Optional optimization flags
+PKG_CXXFLAGS = -O3 -march=native
