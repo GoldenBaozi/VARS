@@ -18,3 +18,5 @@ Imports:
 LinkingTo: Rcpp, RcppArmadillo
 URL: https://github.com/GoldenBaozi/VARS
 BugReports: https://github.com/GoldenBaozi/VARS/issues
+Depends: 
+    R (>= 2.10)
