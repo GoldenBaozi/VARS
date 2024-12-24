@@ -126,23 +126,24 @@ arma::vec HDC_ts(int start, int end, int shock, int res_var, arma::cube IRF, arm
 }
 
 //' @details compute HD of all shocks to which_var from start to end.
-vec get_HDs(int start, int end, int which_var, cube IRF, mat eps)
+// [[Rcpp::export()]]
+arma::vec get_HDs(int start, int end, int which_var, arma::cube IRF, arma::mat eps)
 {
     int hmax = end - start + 1;
     int end_id = end - 1;
     int nvar = eps.n_cols;
     int var_id = which_var - 1;
-    mat HD(nvar, hmax);
+    arma::mat HD(nvar, hmax);
 
-    for (int h = 0; h < hmax - 1; h++)
+    for (int h = 0; h < hmax; h++)
     {
-        for (int j = 0; j < nvar - 1; j++)
+        for (int j = 0; j < nvar; j++)
         {
             HD(j, h) = IRF(var_id, j, h) * eps(end_id - h, j);
         }
     }
 
-    vec HD_out = sum(HD, 1);
+    arma::vec HD_out = sum(HD, 1);
     return HD_out;
 }
 
@@ -175,10 +176,13 @@ List bootstrap_c(arma::mat Y_start, arma::mat beta, arma::mat u, arma::mat IV, s
     arma::cube B_save(nvar, nvar, save);
     arma::cube eps_save(T_est, nvar, save);
     bool cons = (n_para % nvar == 1);
-    for (int i = 0; i < save; i++)
+    int flag = 0; // number of saved bootstrap result
+    while (flag < save)
     {
         arma::mat u_tmp(T_est, nvar);
         arma::mat IV_tmp(T_est, nvar);
+        arma::mat B_final(nvar, nvar);
+        arma::mat eps_tmp(T_est, nvar, arma::fill::zeros);
         arma::vec idx;
         if (method == "wild")
         {
@@ -202,30 +206,42 @@ List bootstrap_c(arma::mat Y_start, arma::mat beta, arma::mat u, arma::mat IV, s
             X = arma::join_rows(arma::ones(T_est), X);
         }
         arma::mat beta_tmp = arma::inv(X.t() * X) * X.t() * Y;
-        // mat u_tmp = Y - X * beta_tmp;
-        arma::mat Sigma_tmp = u_tmp.t() * u_tmp;
-        beta_save.slice(i) = beta_tmp;
-        u_save.slice(i) = u_tmp;
-        Sigma_save.slice(i) = Sigma_tmp;
-        if (identify == "IV")
-        {
-            IV_tmp = shuffle_c(IV, idx, method, plag);
-            arma::mat B_tmp = u_tmp.t() * IV_tmp / T_est;
-            arma::vec B_diag = arma::diagvec(B_tmp).t();
-            for (int i = 0; i < nvar; i++)
-            {
-                if (B_diag(i) == 0)
+        double maxroot = max_root(beta_tmp);
+        if (maxroot < 0.9999) {
+            arma::mat u_boot = Y - X * beta_tmp;
+            arma::mat Sigma_tmp = u_boot.t() * u_boot / T_est;
+            if (identify == "IV"){
+                // Rcout << "start" << "\n";
+                IV_tmp = shuffle_c(IV, idx, method, plag);
+                // Rcout << "hello" << "\n";
+                arma::mat B_tmp = u_boot.t() * IV_tmp / T_est;
+                arma::rowvec B_diag = arma::diagvec(B_tmp).t();
+                for (int k = 0; k < nvar; k++)
                 {
-                    B_diag(i) = 1;
+                    if (B_diag(k) == 0)
+                    {
+                        B_diag(k) = 1;
+                    }
                 }
+                B_final = B_tmp / repmat(B_diag, nvar, 1);
             }
-            B_save.slice(i) = B_tmp / repmat(B_diag, nvar, 1);
+            else
+            {
+                B_final = chol(Sigma_tmp, "lower");
+                eps_tmp = u_boot * inv(B_final.t());
+            }
+
+            beta_save.slice(flag) = beta_tmp;
+            u_save.slice(flag) = u_boot;
+            Sigma_save.slice(flag) = Sigma_tmp;
+            B_save.slice(flag) = B_final;
+            eps_save.slice(flag) = eps_tmp;
+            flag ++;
+            // Rcout << flag << "\n";
         }
-        else
-        {
-            B_save.slice(i) = chol(Sigma_tmp, "lower");
+        else{
+            continue;
         }
-        eps_save.slice(i) = u_tmp * inv(B_save.slice(i).t());
     }
 
     return List::create(

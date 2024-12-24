@@ -6,3 +6,4 @@
 .quarto
 /src/*.o
 /src/*.dll
+.vscode

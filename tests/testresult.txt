@@ -1,0 +1,38 @@
+1. SR on MP problem, 100 draws, R code, require about 220000 draws
+
+Unit: seconds
+               expr   min    lq  mean median    uq   max neval
+ test_sample(mpvar) 7.227 7.722 8.222  8.263 8.562 9.271    10
+
+2. check NSR on MP problem, check 100 draws, R code
+
+Unit: seconds
+            expr   min   lq  mean median    uq   max neval
+ test_NSR(mpvar) 1.454 1.46 1.472  1.466 1.473 1.528    10
+
+3. SR and EBR on Oil problem, 100 draws, R code
+
+Unit: seconds
+                expr   min    lq  mean median    uq   max neval
+ test_sample(oilvar) 244.9 251.9 265.2  259.3 268.6 301.4     5
+
+4. check NSR on Oil problem, check 100 draws, R code
+
+Unit: 0.43 seconds
+
+5. SR on MP problem, 100 draws, matlab code, require about 4200000 draws
+
+about 6.338 seconds
+
+6. check NSR on MP problem, check 100 draws, matlab code
+
+starting parallel: 25 seconds
+check: 0.592 seconds
+
+7. SR and EBR on Oil problem, 100 draws, matlab code
+
+434.68 seconds 2x slower
+
+8. check NSR on Oil problem, check 100 draws, matlab code
+
+0.316 seconds

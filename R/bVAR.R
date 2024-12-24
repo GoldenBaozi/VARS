@@ -8,6 +8,9 @@ bVAR <- R6::R6Class(
     Sigma.prior = NULL,
     alpha.post = NULL,
     Sigma.post = NULL,
+    B.NSR = NULL,
+    Sigma.NSR = NULL,
+    beta.NSR = NULL,
     get.result.tmp = FALSE,
     initialize = function(data = NA, p.lag = NA, prior.type = "info", priors = NA, cons = 1) {
       # need to check data and p.lag input
@@ -37,7 +40,7 @@ bVAR <- R6::R6Class(
       } else if (prior.type == "info") {
         if (det(t(self$X) %*% self$X) == 0) stop("X'X not invertible, cannot use OLS estimates as prior!")
         self$beta <- solve(t(self$X) %*% self$X, t(self$X) %*% self$Y)
-        self$U <- Y - t(self$X) %*% self$beta
+        self$U <- self$Y - self$X %*% self$beta
         self$Sigma <- (t(self$U) %*% self$U) / (self$T.est)
         self$alpha.prior <- list(
           "mean" = as.vector(self$beta),
@@ -94,7 +97,7 @@ bVAR <- R6::R6Class(
         cat("* ", res.num, " restrictions get.\n* First impose SR and EBR on drawn samples:\n")
         mystr <- paste("*", as.character(draw), "draws saved with sign and elasticity restrictions satisfied, total time usage")
         tic(msg = mystr)
-        sign.out <- impose_SR_and_EBR(self$alpha.post, self$Sigma.post, restrictions, self$Y, self$X, draw, self$p.lag, max.irf, self$cons)
+        sign.out <- impose_SR_and_EBR(self$alpha.post, self$Sigma.post, restrictions, self$Y, self$X, draw, self$p.lag, max.irf)
         toc()
         # save drawn structural parameters and IRFs
         self$beta.set <- sign.out$beta_saved
@@ -106,14 +109,14 @@ bVAR <- R6::R6Class(
         cat("* checking NSR...\n")
         mystr <- "* Narrative restrictions imposed, time usage"
         tic(msg = mystr)
-        NSR.out <- impose_NSR(restrictions, self$Y, self$X, self$B.draw, self$beta.draw, self$Sigma.draw, self$p.lag, max.irf, M, self$cons)
+        NSR.out <- impose_NSR(restrictions, self$Y, self$X, self$B.set, self$beta.set, self$Sigma.set, self$p.lag, max.irf, M)
         toc()
-        self$beta.set <- NSR.out$beta_NSR
-        self$B.set <- NSR.out$B_NSR
-        self$Sigma.set <- NSR.out$Sigma_NSR
+        self$beta.NSR <- NSR.out$beta_NSR
+        self$B.NSR <- NSR.out$B_NSR
+        self$Sigma.NSR <- NSR.out$Sigma_NSR
       }
       cat("* identification done.\n")
-    }
+    },
     # identify.all = function(SR = NA, EBR = NA, NSR = NA, draw = 5000, M = 1000) {
     #   restrictions.out <- private$get.restrictions(SR, EBR, NSR)
     #   restrictions <- restrictions.out$restrictions
@@ -130,6 +133,41 @@ bVAR <- R6::R6Class(
     #   self$Sigma.draw <- sign.out$Sigma_saved
     #   cat("identification done.\n")
     # },
+    tool = function(tool = NA_character_, hor = NA_integer_, prob = NA_real_, start = NA_integer_, end = NA_integer_, which.var = NA_character_) {
+      if (tool == "IRF") {
+        # self$IRF.compute(hor = hor)
+        IRF.out <- self$IRF.compute.batch(hor = hor, prob = prob)
+        # IRF.out$base <- self$IRF
+        return(IRF.out)
+      } else if (tool == "FECD") {
+        # self$FEVD.compute(hor = hor)
+        FEVD.out <- self$FEVD.compute.batch(hor = hor, prob = prob)
+        # FEVD.out$base <- self$FEVD
+        return(FEVD.out)
+      } else if (tool == "HDC") {
+        # HDC.base <- self$HDC.compute(start, end, which.var)
+        HDC.out <- self$HDC.compute.batch(start, end, which.var, prob)
+        # HDC.boot$base <- HDC.base
+        return(HDC.out)
+      } else {
+        stop("* Please specify correct VAR tool name.")
+      }
+    },
+    IRF.compute.NSR = function(hor = NA_integer_, prob = NA_real_) {
+      msg <- paste("* IRF of NSR computed and", prob, "HDP get, time usage")
+      HDP <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
+      tic(msg)
+      # self$Psi.set <- IRF_compute_batch(self$beta.NSR, self$B.NSR, hor)$Psi
+      IRF.set <- IRF_compute_batch(self$beta.NSR, self$B.NSR, hor)$IRF
+      IRF.med <- apply(IRF.set, c(1, 2), median)
+      IRF.avg <- apply(IRF.set, c(1, 2), mean)
+      IRF.ub <- apply(IRF.set, c(1, 2), function(x) quantile(x, probs = HDP[2]))
+      IRF.lb <- apply(IRF.set, c(1, 2), function(x) quantile(x, probs = HDP[1]))
+      toc()
+      IRF.list <- list("avg" = IRF.avg, "med" = IRF.med, "ub" = IRF.ub, "lb" = IRF.lb)
+      IRF.out <- lapply(IRF.list, mat2cube)
+      return(IRF.out)
+    }
   ),
   private = list(
     conjugate.post = function() {
@@ -185,7 +223,7 @@ bVAR <- R6::R6Class(
         }
       }
       if (any(!is.na(EBR))) {
-        for (i in 1:seq_along(EBR)) {
+        for (i in seq_along(EBR)) {
           shock <- EBR[[i]][[1]]
           h <- EBR[[i]][[3]]
           if (h > max.irf) max.irf <- h

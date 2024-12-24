@@ -73,6 +73,21 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// get_HDs
+arma::vec get_HDs(int start, int end, int which_var, arma::cube IRF, arma::mat eps);
+RcppExport SEXP _VARS_get_HDs(SEXP startSEXP, SEXP endSEXP, SEXP which_varSEXP, SEXP IRFSEXP, SEXP epsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< int >::type start(startSEXP);
+    Rcpp::traits::input_parameter< int >::type end(endSEXP);
+    Rcpp::traits::input_parameter< int >::type which_var(which_varSEXP);
+    Rcpp::traits::input_parameter< arma::cube >::type IRF(IRFSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type eps(epsSEXP);
+    rcpp_result_gen = Rcpp::wrap(get_HDs(start, end, which_var, IRF, eps));
+    return rcpp_result_gen;
+END_RCPP
+}
 // get_HDs_ts
 arma::mat get_HDs_ts(int start, int end, int which_var, arma::cube IRF, arma::mat eps);
 RcppExport SEXP _VARS_get_HDs_ts(SEXP startSEXP, SEXP endSEXP, SEXP which_varSEXP, SEXP IRFSEXP, SEXP epsSEXP) {
@@ -204,12 +219,27 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// construct_data
+arma::mat construct_data(arma::mat Y_start, arma::mat beta, arma::mat u, int T);
+RcppExport SEXP _VARS_construct_data(SEXP Y_startSEXP, SEXP betaSEXP, SEXP uSEXP, SEXP TSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< arma::mat >::type Y_start(Y_startSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type beta(betaSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type u(uSEXP);
+    Rcpp::traits::input_parameter< int >::type T(TSEXP);
+    rcpp_result_gen = Rcpp::wrap(construct_data(Y_start, beta, u, T));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_VARS_IRF_compute", (DL_FUNC) &_VARS_IRF_compute, 5},
     {"_VARS_FEVD_compute", (DL_FUNC) &_VARS_FEVD_compute, 5},
     {"_VARS_HDC", (DL_FUNC) &_VARS_HDC, 6},
     {"_VARS_HDC_ts", (DL_FUNC) &_VARS_HDC_ts, 6},
+    {"_VARS_get_HDs", (DL_FUNC) &_VARS_get_HDs, 5},
     {"_VARS_get_HDs_ts", (DL_FUNC) &_VARS_get_HDs_ts, 5},
     {"_VARS_bootstrap_c", (DL_FUNC) &_VARS_bootstrap_c, 8},
     {"_VARS_IRF_compute_batch", (DL_FUNC) &_VARS_IRF_compute_batch, 3},
@@ -218,6 +248,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_VARS_gibbs_sampler", (DL_FUNC) &_VARS_gibbs_sampler, 8},
     {"_VARS_impose_SR_and_EBR", (DL_FUNC) &_VARS_impose_SR_and_EBR, 8},
     {"_VARS_impose_NSR", (DL_FUNC) &_VARS_impose_NSR, 9},
+    {"_VARS_construct_data", (DL_FUNC) &_VARS_construct_data, 4},
     {NULL, NULL, 0}
 };
 

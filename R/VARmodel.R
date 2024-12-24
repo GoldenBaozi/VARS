@@ -79,7 +79,7 @@ VAR <- R6::R6Class(
       } else {
         self$X <- Y.lag
       }
-      self$Y.start <- self$data[1:(self$T - p.lag), ]
+      self$Y.start <- self$data[1:(self$p.lag), ]
       cat("* VAR class initialized.\n")
       cat("-> variables: ", paste0(self$var.names, collapse = ", "), "\n")
       cat("-> time period: ", as.character(self$time[1]), " to ", as.character(self$time[self$T]), "\n")
@@ -87,7 +87,7 @@ VAR <- R6::R6Class(
     },
     IRF.compute = function(hor = NA_integer_) {
       # compute Psi and IRF using basic OLS result
-      IRF.out <- IRF_compute(self$beta, self$B, hor, self$n.var, self$p.lag, self$cons)
+      IRF.out <- IRF_compute(self$beta, self$B, hor, self$n.var, self$p.lag)
       self$hor <- hor
       self$Psi <- IRF.out$Psi
       self$IRF <- IRF.out$IRF
@@ -105,29 +105,36 @@ VAR <- R6::R6Class(
       return(HDC)
     },
     IRF.compute.batch = function(hor = NA_integer_, prob = NA_real_) {
-      msg <- paste("* IRF computed and", prob, "HDP get, time usage:")
+      msg <- paste("* IRF computed and", prob, "HDP get, time usage")
       HDP <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
       tic(msg)
-      self$Psi.set <- IRF_compute_batch(self$beta.set, self$B.set, hor, self$cons)$Psi
-      self$IRF.set <- IRF_compute_batch(self$beta.set, self$B.set, hor, self$cons)$IRF
-      IRF.avg <- apply(self$IRF.set, c(1, 2), median)
+      IRF.batch <- IRF_compute_batch(self$beta.set, self$B.set, hor)
+      self$Psi.set <- IRF.batch$Psi
+      self$IRF.set <- IRF.batch$IRF
+      IRF.med <- apply(self$IRF.set, c(1, 2), median)
+      IRF.avg <- apply(self$IRF.set, c(1, 2), mean)
       IRF.ub <- apply(self$IRF.set, c(1, 2), function(x) quantile(x, probs = HDP[2]))
       IRF.lb <- apply(self$IRF.set, c(1, 2), function(x) quantile(x, probs = HDP[1]))
       toc()
-      return(list("avg" = IRF.avg, "ub" = IRF.ub, "lb" = IRF.lb))
+      IRF.list <- list("avg" = IRF.avg, "med" = IRF.med, "ub" = IRF.ub, "lb" = IRF.lb)
+      IRF.out <- lapply(IRF.list, mat2cube)
+      return(IRF.out)
     },
     FEVD.compute.batch = function(hor = NA_integer_, prob = NA_real_) {
       msg <- paste("* FEVD computed and", prob, "HDP get, time usage:")
       HDP <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
       tic(msg)
       self$FEVD.set <- FEVD_compute_batch(self$beta.set, self$B.set, self$Sigma.set, self$Psi.set, hor)
-      FEVD.avg <- apply(self$FEVD.set, c(1, 2), median)
+      FEVD.avg <- apply(self$FEVD.set, c(1, 2), mean)
+      FEVD.med <- apply(self$FEVD.set, c(1, 2), median)
       FEVD.ub <- apply(self$FEVD.set, c(1, 2), function(x) quantile(x, probs = HDP[2]))
       FEVD.lb <- apply(self$FEVD.set, c(1, 2), function(x) quantile(x, probs = HDP[1]))
       toc()
-      return(list("avg" = FEVD.avg, "ub" = FEVD.ub, "lb" = FEVD.lb))
+      FEVD.list <- list("avg" = FEVD.avg, "med" = FEVD.med, "ub" = FEVD.ub, "lb" = FEVD.lb)
+      FEVD.out <- lapply(FEVD.list, mat2cube)
+      return(FEVD.out)
     },
-    HDC.compute.batch = function(start = NA, end = NA, which.var = NA_character_) {
+    HDC.compute.batch = function(start = NA, end = NA, which.var = NA_character_, prob = NA_real_) {
       # note: IRF and FEVD computes all, while HDC only compute the historical decomposition of "which.var"
       var.id <- which(self$var.names == which.var)
       start.id <- which(self$time == start) - self$p.lag
@@ -136,11 +143,14 @@ VAR <- R6::R6Class(
       HDP <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
       tic(msg)
       HDC <- HDs_compute_batch(start.id, end.id, var.id, self$IRF.set, self$eps.set)
-      HDC.avg <- apply(HDC, c(1, 2), median)
+      HDC.avg <- apply(HDC, c(1, 2), mean)
+      HDC.med <- apply(HDC, c(1, 2), median)
       HDC.ub <- apply(HDC, c(1, 2), function(x) quantile(x, probs = HDP[2]))
       HDC.lb <- apply(HDC, c(1, 2), function(x) quantile(x, probs = HDP[1]))
       toc()
-      return(list("avg" = HDC.avg, "ub" = HDC.ub, "lb" = HDC.lb))
+      HDC.list <- list("avg" = HDC.avg, "med" = HDC.med, "ub" = HDC.ub, "lb" = HDC.lb)
+      HDC.out <- lapply(HDC.list, mat2cube)
+      return(HDC.out)
     }
   )
 )

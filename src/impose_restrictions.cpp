@@ -30,7 +30,6 @@ List impose_SR_and_EBR(List alpha_post, List Sigma_post, List restrictions, arma
     int report = draw / 10;
     int try_per_beta_sigma = 100;
     auto start_time = std::chrono::high_resolution_clock::now();
-    // Progress p(10, true);
     // loop on draw
     while (flag < draw)
     {
@@ -39,7 +38,7 @@ List impose_SR_and_EBR(List alpha_post, List Sigma_post, List restrictions, arma
         arma::mat NT = arma::kron(Sigma_1draw, N0);
         arma::mat cov = arma::chol(NT, "lower");
         arma::vec alpha_1draw = alpha_post_mean + cov * randn(alpha_post_mean.n_elem, 1);
-        arma::mat beta_1draw = reshape(alpha_1draw, nvar * plag + 1, nvar);
+        arma::mat beta_1draw = arma::reshape(alpha_1draw, nvar * plag + 1, nvar);
         arma::mat u_1draw = Y - X * beta_1draw;
         arma::mat P = arma::chol(Sigma_1draw, "lower");
         double maxroot = max_root(beta_1draw);
@@ -47,12 +46,12 @@ List impose_SR_and_EBR(List alpha_post, List Sigma_post, List restrictions, arma
         {
             for (int i = 0; i < try_per_beta_sigma; i++)
             {
-                arma::mat X = randn(nvar, nvar);
+                arma::mat X = arma::randn(nvar, nvar);
                 arma::mat Q, R;
                 arma::qr(Q, R, X);
                 Q = Q * arma::diagmat(sign(R.diag()));
                 arma::mat B_1draw = P * Q;
-                arma::mat B_inv_1draw = inv(trans(B_1draw));
+                arma::mat B_inv_1draw = arma::inv(arma::trans(B_1draw));
                 // mat eps_1draw = u_1draw * B_inv_1draw;
                 Psi_IRF tmp = IRF_compute_internal(beta_1draw, B_1draw, hor, nvar, plag);
                 arma::cube IRF_1draw = tmp.IRF;
@@ -75,6 +74,7 @@ List impose_SR_and_EBR(List alpha_post, List Sigma_post, List restrictions, arma
                         Rcout << "-> " << flag << " draws saved, total time usage: " << elapsed_time << " seconds.\n";
                         // p.increment();
                     }
+                    break;
                 }
             }
         }
@@ -134,22 +134,26 @@ List impose_NSR(List restrictions, arma::mat Y, arma::mat X, arma::cube B_draw, 
         NumericVector my_weights = wrap(weights.head(flag));
         NumericVector new_id = sample(xx, flag, true, my_weights);
         arma::uvec save_id = as<uvec>(new_id);
+        arma::uvec unique_draw = arma::unique(save_id);
+        int unique_draw_num = unique_draw.n_elem;
         arma::cube B_saved = B_NSR.slices(save_id);
         arma::cube beta_saved = beta_NSR.slices(save_id);
         arma::cube Sigma_saved = Sigma_NSR.slices(save_id);
 
+        Rcout << "* " << unique_draw_num << " unique draws in resample" << "\n";
         return List::create(
             _["B_NSR"] = B_saved,
             _["beta_NSR"] = beta_saved,
-            _["Sigma_NSR"] = Sigma_saved);
+            _["Sigma_NSR"] = Sigma_saved
+        );
     }
     else
     {
         Rcout << "* " << "NSR fails to get solutions, return NA T_T \n";
         return List::create(
-            _["B_saved"] = B_draw,
-            _["beta_saved"] = beta_draw,
-            _["Sigma_saved"] = Sigma_draw);
+            _["B_NSR"] = B_draw,
+            _["beta_NSR"] = beta_draw,
+            _["Sigma_NSR"] = Sigma_draw);
     }
 }
 

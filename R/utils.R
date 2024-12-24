@@ -30,3 +30,11 @@ which.lag <- function(data, lag.max = 12, criterion = "AIC") {
   }
   return(p.out)
 }
+
+mat2cube <- function(mat) {
+  n.var <- sqrt(dim(mat)[1])
+  hor <- dim(mat)[2]
+  cube <- array(data = mat, dim = c(n.var, n.var, hor))
+  cube.t <- aperm(cube, c(2, 1, 3))
+  return(cube.t)
+}

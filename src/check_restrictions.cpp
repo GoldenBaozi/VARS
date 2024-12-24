@@ -84,10 +84,15 @@ bool check_NSR(List restrictions, cube IRF, mat eps)
                 int var = as<int>(res_1[3]);
                 int nvar = eps.n_cols;
                 uvec period = as<uvec>(res_1[4]);
+                double sign = as<double>(res_1[5]);
                 int start = period(0);
                 int end = period(period.n_elem - 1);
+                // first check Narrative sign
+                // mat eps_test = eps.submat(start-1, shock-1, end-1, shock-1) * sign;
+                // bool cond_Ns = all(vectorise(eps_test) > 0);
+                // then check Narrative contribution
                 string inten = as<string>(res_1[6]);
-                vec HDs = get_HDs(start, end, var, IRF, eps);
+                vec HDs = abs(get_HDs(start, end, var, IRF, eps));
                 double target = HDs(shock - 1);
                 vec HDs_test1(nvar);
                 HDs_test1.fill(target);
@@ -95,8 +100,8 @@ bool check_NSR(List restrictions, cube IRF, mat eps)
                 bool cond_most = all(HDs_test1 - HDs >= 0);
                 bool cond_least = all(HDs_test1 - HDs <= 0);
                 bool cond_overwhelm = (target >= HDs_test2);
-                bool cond = ((inten == "most" && cond_most) || (inten == "least" && cond_least) || (inten == "overwhelm" && cond_overwhelm) || (inten == "negligible" && !cond_overwhelm));
-                if (cond)
+                bool cond_Nc = ((inten == "most" && cond_most) || (inten == "least" && cond_least) || (inten == "overwhelm" && cond_overwhelm) || (inten == "negligible" && !cond_overwhelm));
+                if (cond_Nc)
                 {
                     flag++;
                 }
@@ -201,7 +206,7 @@ double compute_importance_weight(List restrictions, cube IRF, int M, int row, in
             satisfy++;
         }
     }
-    double weight = 1.0 / (satisfy * 1.0 / M);
+    double weight = M * 1.0 / satisfy * 1.0;
     return weight;
 }
 

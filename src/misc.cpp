@@ -110,7 +110,8 @@ mat shuffle_c(mat obj, vec idx, string method, int block_size)
     else
     {
         mat block_tmp(0, 0);
-        for (int i = 0; i < idx.n_elem; i++)
+        int end0 = idx.n_elem;
+        for (int i = 0; i < end0; i++)
         {
             int start = idx(i) * block_size;
             int end = start + block_size - 1;
@@ -126,17 +127,32 @@ mat shuffle_c(mat obj, vec idx, string method, int block_size)
     return boot_out;
 }
 
-mat construct_data(mat Y_start, mat beta, mat u, int T)
+// [[Rcpp::export()]]
+arma::mat construct_data(arma::mat Y_start, arma::mat beta, arma::mat u, int T)
 {
     int plag = Y_start.n_rows;
-    mat Y = Y_start;
-    // bool cons = (beta.n_rows % plag == 1);
+    int nvar = Y_start.n_cols;
+    arma::mat Y = Y_start;
+    bool cons = (beta.n_rows % plag == 1); // consider the situation with constant
 
     for (int i = 0; i < T - plag; i++)
     {
-        mat X_1 = trans((Y.rows(i, plag - 1 + i).t()));
-        mat Y_1 = X_1 * beta + u.row(i);
-        Y = join_cols(Y, Y_1);
+        arma::mat X_lag(1, beta.n_rows);
+        if (cons) {
+            X_lag(0,0) = 1;
+            for (int j = plag - 1; j >= 0; j--) {
+                arma::mat X_tmp = Y.row(i+j);
+                X_lag.cols((plag-1-j)*nvar+1, (plag-j)*nvar) = X_tmp;
+            }
+        }
+        else {
+            for (int j = plag - 1; j >= 0; j--) {
+                arma::mat X_tmp = Y.row(i+j);
+                X_lag.cols((plag-1-j)*nvar, (plag-j)*nvar-1) = X_tmp;
+            }
+        }
+        arma::mat Y_1 = X_lag * beta + u.row(i);
+        Y = arma::join_cols(Y, Y_1);
     }
     return Y;
 }
