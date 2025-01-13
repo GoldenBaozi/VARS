@@ -7,3 +7,5 @@
 /src/*.o
 /src/*.dll
 .vscode
+
+/.quarto/
