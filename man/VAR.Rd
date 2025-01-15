@@ -2,19 +2,24 @@
 % Please edit documentation in R/VARmodel.R
 \name{VAR}
 \alias{VAR}
-\title{VAR: basic VAR model}
+\title{R6 class to construct basic VAR model}
 \description{
+VAR: basic VAR model
+}
+\details{
 The \code{VAR} class implements basic data manipulation, info extraction and VAR tools computation, which are inherited by other specific VAR classes.
 }
-\section{Methods}{
+\section{Fields}{
 
-\describe{
-\item{\code{new(name, value)}}{Creates a new instance of the class.}
-\item{\code{greet()}}{Prints a greeting message.}
-\item{\code{add(x, y)}}{Adds two numbers and returns the result.}
-}
 }
 
+\seealso{
+\code{\link[=VAR$IRF.compute]{VAR$IRF.compute()}}
+
+\code{\link[=VAR$FEVD.compute]{VAR$FEVD.compute()}}
+
+\code{\link[=VAR$HDC.compute]{VAR$HDC.compute()}}
+}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
@@ -23,6 +28,8 @@ The \code{VAR} class implements basic data manipulation, info extraction and VAR
 \item{\code{cons}}{bool, indicating whether include constant in model}
 
 \item{\code{T.est}}{int, total time periods used for estimation}
+
+\item{\code{n.var}}{int number of variables}
 
 \item{\code{p.lag}}{int, lags of the VAR model}
 
@@ -41,6 +48,36 @@ The \code{VAR} class implements basic data manipulation, info extraction and VAR
 \item{\code{X}}{numeric matrix, dependent variables}
 
 \item{\code{beta}}{numeric matrix, VAR reduced form coefficients}
+
+\item{\code{U}}{reduced form VAR residuals}
+
+\item{\code{Sigma}}{reduced form VAR}
+
+\item{\code{B}}{the structural impact matrix of SVAR}
+
+\item{\code{eps}}{the structural shocks}
+
+\item{\code{Psi}}{the un-orthogonal IRF}
+
+\item{\code{IRF}}{the orthogonal IRF}
+
+\item{\code{FEVD}}{the forecast error-variance decomposition matrix}
+
+\item{\code{beta.set}}{store related bootstrap values}
+
+\item{\code{U.set}}{store related bootstrap values}
+
+\item{\code{Sigma.set}}{store related bootstrap values}
+
+\item{\code{B.set}}{store related bootstrap values}
+
+\item{\code{eps.set}}{store related bootstrap values}
+
+\item{\code{Psi.set}}{store related bootstrap values}
+
+\item{\code{IRF.set}}{store related bootstrap values}
+
+\item{\code{FEVD.set}}{store related bootstrap values}
 }
 \if{html}{\out{</div>}}
 }
@@ -61,64 +98,164 @@ The \code{VAR} class implements basic data manipulation, info extraction and VAR
 \if{html}{\out{<a id="method-basic VAR model-new"></a>}}
 \if{latex}{\out{\hypertarget{method-basic VAR model-new}{}}}
 \subsection{Method \code{new()}}{
+\code{VAR} class constructor
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VAR$new(data = NA, p.lag = NA, cons = 1)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{data}}{time series data frame or names matrix}
+
+\item{\code{p.lag}}{int, number of lags in model}
+
+\item{\code{cons}}{bool, contain constant or not in model}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+an R6 class, \code{VAR}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-basic VAR model-IRF.compute"></a>}}
 \if{latex}{\out{\hypertarget{method-basic VAR model-IRF.compute}{}}}
 \subsection{Method \code{IRF.compute()}}{
+Compute IRF
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VAR$IRF.compute(hor = NA_integer_)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{hor}}{number of horizons to compute}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+nothing, store IRF in \code{self$IRF}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-basic VAR model-FEVD.compute"></a>}}
 \if{latex}{\out{\hypertarget{method-basic VAR model-FEVD.compute}{}}}
 \subsection{Method \code{FEVD.compute()}}{
+Compute forecast error variance decomposition
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VAR$FEVD.compute(hor = self$hor)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{hor}}{number of horizons to compute}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+nothing, store FEVD in \code{self$FEVD}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-basic VAR model-HDC.compute"></a>}}
 \if{latex}{\out{\hypertarget{method-basic VAR model-HDC.compute}{}}}
 \subsection{Method \code{HDC.compute()}}{
+compute historical decomposition
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VAR$HDC.compute(start = NA, end = NA, which.var = NA_character_)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{start}}{\code{as.Date()} format, start of interested period}
+
+\item{\code{end}}{\code{as.Date()} format, end of interested period}
+
+\item{\code{which.var}}{the variable you want to do historical decomposition}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+historical decomposition matrix, each row denotes the contribution of one shock
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-basic VAR model-IRF.compute.batch"></a>}}
 \if{latex}{\out{\hypertarget{method-basic VAR model-IRF.compute.batch}{}}}
 \subsection{Method \code{IRF.compute.batch()}}{
+compute IRFs of parameter sets
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VAR$IRF.compute.batch(hor = NA_integer_, prob = NA_real_)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{hor}}{horizon}
+
+\item{\code{prob}}{probability of CI}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+a list, containing median, average, upper bound and lower bound of the CI
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-basic VAR model-FEVD.compute.batch"></a>}}
 \if{latex}{\out{\hypertarget{method-basic VAR model-FEVD.compute.batch}{}}}
 \subsection{Method \code{FEVD.compute.batch()}}{
+compute FEVDs of parameter sets
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VAR$FEVD.compute.batch(hor = NA_integer_, prob = NA_real_)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{hor}}{horizon}
+
+\item{\code{prob}}{probability of CI}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+a list, containing median, average, upper bound and lower bound of the CI
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-basic VAR model-HDC.compute.batch"></a>}}
 \if{latex}{\out{\hypertarget{method-basic VAR model-HDC.compute.batch}{}}}
 \subsection{Method \code{HDC.compute.batch()}}{
+compute HDCs of parameter sets
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VAR$HDC.compute.batch(start = NA, end = NA, which.var = NA_character_)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VAR$HDC.compute.batch(
+  start = NA,
+  end = NA,
+  which.var = NA_character_,
+  prob = NA_real_
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{start}}{start of the period of interest}
+
+\item{\code{end}}{end of the period of interest}
+
+\item{\code{which.var}}{the variable you want to do historical decomposition}
+
+\item{\code{prob}}{probability of CI}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+a list, containing median, average, upper bound and lower bound of the CI
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-basic VAR model-clone"></a>}}

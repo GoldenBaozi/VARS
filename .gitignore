@@ -9,3 +9,5 @@
 .vscode
 
 /.quarto/
+/doc/
+*.Rdata

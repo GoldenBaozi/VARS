@@ -1,17 +1,52 @@
+#' R6 class of bayesian VAR
+#' @description
+#' bVAR: bayesian VAR model
+#' @details
+#' The `bVAR` class implements bayesian VAR estimation an identification.
+#' * estimation: conjugate prior or gibbs sampling
+#' * identification: sign restrictions
+#' * inference: bayesian HPD
+#'
+#' @useDynLib VARS
+#' @import Rcpp
+#' @import RcppArmadillo
+#' @import R6
+#' @import stats
+#' @import tictoc
+#' @export
 bVAR <- R6::R6Class(
   "Bayes VAR",
   inherit = VAR,
   public = list(
-    # prior and post parameters
+    #' @field prior.type type of prior, can be "info", "flat" or "user"
     prior.type = NULL,
+    #' @field alpha.prior store prior of VAR coefficients
     alpha.prior = NULL,
+    #' @field Sigma.prior store prior of VAR Cov matrix
     Sigma.prior = NULL,
+    #' @field alpha.post store post of VAR coefficients
     alpha.post = NULL,
+    #' @field Sigma.post store post of VAR Cov matrix
     Sigma.post = NULL,
+    #' @field B.NSR save impact matrices of SVAR with narrative sign restrictions
     B.NSR = NULL,
+    #' @field Sigma.NSR save Cov matrices of VAR with narrative sign restrictions
     Sigma.NSR = NULL,
+    #' @field beta.NSR save coefficients of VAR with narrative sign restrictions
     beta.NSR = NULL,
+    #' @field get.result.tmp indicator of whether SR and EBR are imposed
     get.result.tmp = FALSE,
+
+    #' @description
+    #'constructor of `bVAR`
+    #' @param data time series data
+    #' @param p.lag number of lags in model
+    #' @param prior.type if `priors` not provided, specify prior type, "flat"(Normal) or "info"(OLS result)
+    #' @param priors user provided prior, `prior.type` will be set to "user"
+    #' @param cons whether include constant in model
+    #'
+    #' @return an R6 class of `bVAR`
+    #' @export
     initialize = function(data = NA, p.lag = NA, prior.type = "info", priors = NA, cons = 1) {
       # need to check data and p.lag input
       super$initialize(data, p.lag)
@@ -55,6 +90,19 @@ bVAR <- R6::R6Class(
         stop("please follow the instructions to set priors")
       }
     },
+    #' @description
+    #' estimation of bVAR model
+    #' @param Y `self$Y`
+    #' @param X `self$X`
+    #' @param method "conjugate" or "gibbs"
+    #' @param burn.in required when `method=="gibbs"`, dropping samples before save
+    #' @param draw required when `method=="gibbs"`, number of saved draws
+    #' @param thin required when `method=="gibbs"`
+    #' @param post.save required when `method=="gibbs"`, save post distribution parameters or not
+    #' @param post.method required when `method=="gibbs"`, how to save post distribution parameters (0-last, 1-mean)
+    #'
+    #' @return nothing, results saved in `self$*.post`, `self$beta` and `self$Sigma`
+    #' @export
     est = function(Y = self$Y, X = self$X, method = "gibbs", burn.in = 100, draw = 1000, thin = 1, post.save = NA, post.method = 0) {
       if (method == "gibbs") {
         if (is.na(post.save)) post.save <- draw / 2
@@ -87,7 +135,18 @@ bVAR <- R6::R6Class(
         stop("please set appropriate estimation method!")
       }
     },
-    identify.seq = function(SR = NA, EBR = NA, NSR = NA, draw = 5000, M = 1000, IV = NA) {
+    #' @description
+    #' identification of bVAR model
+    #'
+    #' @param SR sign restrictions
+    #' @param EBR elasticity bound restrictions
+    #' @param NSR narrative sign restrictions
+    #' @param M number of samples to draw when simulating importance weight
+    #' @param draw number of required number of saved samples
+    #'
+    #' @return nothing, results saved in `self$*.set` and `self$*.NSR`
+    #' @export
+    identify.seq = function(SR = NA, EBR = NA, NSR = NA, draw = 5000, M = 1000) {
       restrictions.out <- private$get.restrictions(SR, EBR, NSR)
       restrictions <- restrictions.out$restrictions
       max.irf <- restrictions.out$max.irf
@@ -133,6 +192,18 @@ bVAR <- R6::R6Class(
     #   self$Sigma.draw <- sign.out$Sigma_saved
     #   cat("identification done.\n")
     # },
+    #' @description
+    #' compute VAR tools, currently support IRF, FEVD and HDC
+    #'
+    #' @param tool name of VAR tools to be computed
+    #' @param hor horizons
+    #' @param prob probability of CI
+    #' @param start start of interested period, only required when `tool=="HDC"'
+    #' @param end end of interested period, only required when `tool=="HDC"'
+    #' @param which.var the variable name to do HDC, only required when `tool=="HDC"'
+    #'
+    #' @return related VAR tools, returned as a list with it's average, median and upper lower bound values
+    #' @export
     tool = function(tool = NA_character_, hor = NA_integer_, prob = NA_real_, start = NA_integer_, end = NA_integer_, which.var = NA_character_) {
       if (tool == "IRF") {
         # self$IRF.compute(hor = hor)
@@ -153,6 +224,15 @@ bVAR <- R6::R6Class(
         stop("* Please specify correct VAR tool name.")
       }
     },
+    #' @description
+    #' compute IRFs of NSR parameter sets, used for paper replic
+    #'
+    #' @param hor horizon
+    #' @param prob probability of CI
+    #'
+    #' @return a list, containing median, average, upper bound and lower bound of the CI
+    #' @seealso [VAR$IRF.compute()]
+    #' @export
     IRF.compute.NSR = function(hor = NA_integer_, prob = NA_real_) {
       msg <- paste("* IRF of NSR computed and", prob, "HDP get, time usage")
       HDP <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
@@ -170,6 +250,9 @@ bVAR <- R6::R6Class(
     }
   ),
   private = list(
+    #' @description
+    #' compute posteriors using conjugate priors
+    #' @return nothing, saved in `self$*.post`
     conjugate.post = function() {
       X <- self$X
       K <- dim(X)[2]
@@ -197,6 +280,13 @@ bVAR <- R6::R6Class(
         )
       )
     },
+    #' @description
+    #' parse restrictions provided by user, as inputs for Cpp programs. See code examples for how to procide restrictions
+    #' @param SR sign restrictions
+    #' @param EBR elasticity bound restrictions
+    #' @param NSR narrative sign restrictions
+    #'
+    #' @return a list containing all restrictions
     get.restrictions = function(SR = NA, EBR = NA, NSR = NA) {
       restrictions <- list()
       max.irf <- 0

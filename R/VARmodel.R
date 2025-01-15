@@ -1,10 +1,14 @@
+#' R6 class to construct basic VAR model
+#' @description
 #' VAR: basic VAR model
-#'
+#' @details
 #' The `VAR` class implements basic data manipulation, info extraction and VAR tools computation, which are inherited by other specific VAR classes.
 #'
+#' @section Fields:
 #' @field T int, total time periods of data
 #' @field cons bool, indicating whether include constant in model
 #' @field T.est int, total time periods used for estimation
+#' @field n.var int number of variables
 #' @field p.lag int, lags of the VAR model
 #' @field hor int, number of horizons interested in inference
 #' @field data **named** matrix of dataframe, each column indicating one time series, the first column should be time stramp
@@ -14,13 +18,22 @@
 #' @field Y.start numeric matrix, first `p.lag` periods of data
 #' @field X numeric matrix, dependent variables
 #' @field beta numeric matrix, VAR reduced form coefficients
+#' @field U reduced form VAR residuals
+#' @field Sigma reduced form VAR
+#' @field B the structural impact matrix of SVAR
+#' @field eps the structural shocks
+#' @field Psi the un-orthogonal IRF
+#' @field IRF the orthogonal IRF
+#' @field FEVD the forecast error-variance decomposition matrix
+#' @field beta.set store related bootstrap values
+#' @field U.set store related bootstrap values
+#' @field Sigma.set store related bootstrap values
+#' @field B.set store related bootstrap values
+#' @field eps.set store related bootstrap values
+#' @field Psi.set store related bootstrap values
+#' @field IRF.set store related bootstrap values
+#' @field FEVD.set store related bootstrap values
 #'
-#' @section Methods:
-#' \describe{
-#'   \item{\code{new(name, value)}}{Creates a new instance of the class.}
-#'   \item{\code{greet()}}{Prints a greeting message.}
-#'   \item{\code{add(x, y)}}{Adds two numbers and returns the result.}
-#' }
 #' @useDynLib VARS
 #' @import Rcpp
 #' @import RcppArmadillo
@@ -59,8 +72,15 @@ VAR <- R6::R6Class(
     IRF.set = NULL,
     FEVD = NULL,
     FEVD.set = NULL,
+
+    #' @description
+    #' `VAR` class constructor
+    #' @param data time series data frame or names matrix
+    #' @param p.lag int, number of lags in model
+    #' @param cons bool, contain constant or not in model
+    #' @return  an R6 class, `VAR`
+    #' @export
     initialize = function(data = NA, p.lag = NA, cons = 1) {
-      # TODO check data is a matrix, p.lag is a positive integer, add a `validate()` function
       self$T <- dim(data)[1]
       self$cons <- cons
       self$n.var <- dim(data)[2] - 1
@@ -85,6 +105,11 @@ VAR <- R6::R6Class(
       cat("-> time period: ", as.character(self$time[1]), " to ", as.character(self$time[self$T]), "\n")
       cat("-> model: ", as.character(self$p.lag), " lags of all variables\n")
     },
+    #' @description
+    #' Compute IRF
+    #' @param hor number of horizons to compute
+    #' @return nothing, store IRF in `self$IRF`
+    #' @export
     IRF.compute = function(hor = NA_integer_) {
       # compute Psi and IRF using basic OLS result
       IRF.out <- IRF_compute(self$beta, self$B, hor, self$n.var, self$p.lag)
@@ -92,10 +117,21 @@ VAR <- R6::R6Class(
       self$Psi <- IRF.out$Psi
       self$IRF <- IRF.out$IRF
     },
+    #' @description
+    #' Compute forecast error variance decomposition
+    #' @param hor number of horizons to compute
+    #' @return nothing, store FEVD in `self$FEVD`
+    #' @export
     FEVD.compute = function(hor = self$hor) {
-      # compute FEVD using basic OLS result
       self$FEVD <- FEVD_compute(self$Sigma, self$B, self$Psi, self$n.var, self$hor)
     },
+    #' @description
+    #' compute historical decomposition
+    #' @param start `as.Date()` format, start of interested period
+    #' @param end `as.Date()` format, end of interested period
+    #' @param which.var the variable you want to do historical decomposition
+    #' @return historical decomposition matrix, each row denotes the contribution of one shock
+    #' @export
     HDC.compute = function(start = NA, end = NA, which.var = NA_character_) {
       # compute HDC using basic OLS result, start and end should be as.Date() variables
       var.id <- which(self$var.names == which.var)
@@ -104,6 +140,13 @@ VAR <- R6::R6Class(
       HDC <- get_HDs_ts(start.id, end.id, var.id, self$IRF, self$eps)
       return(HDC)
     },
+    #' @description
+    #' compute IRFs of parameter sets
+    #' @param hor horizon
+    #' @param prob probability of CI
+    #' @return a list, containing median, average, upper bound and lower bound of the CI
+    #' @seealso [VAR$IRF.compute()]
+    #' @export
     IRF.compute.batch = function(hor = NA_integer_, prob = NA_real_) {
       msg <- paste("* IRF computed and", prob, "HDP get, time usage")
       HDP <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
@@ -120,6 +163,13 @@ VAR <- R6::R6Class(
       IRF.out <- lapply(IRF.list, mat2cube)
       return(IRF.out)
     },
+    #' @description
+    #' compute FEVDs of parameter sets
+    #' @param hor horizon
+    #' @param prob probability of CI
+    #' @return a list, containing median, average, upper bound and lower bound of the CI
+    #' @seealso [VAR$FEVD.compute()]
+    #' @export
     FEVD.compute.batch = function(hor = NA_integer_, prob = NA_real_) {
       msg <- paste("* FEVD computed and", prob, "HDP get, time usage:")
       HDP <- c((1 - prob) / 2, 1 - (1 - prob) / 2)
@@ -134,6 +184,15 @@ VAR <- R6::R6Class(
       FEVD.out <- lapply(FEVD.list, mat2cube)
       return(FEVD.out)
     },
+    #' @description
+    #' compute HDCs of parameter sets
+    #' @param prob probability of CI
+    #' @param start start of the period of interest
+    #' @param end end of the period of interest
+    #' @param which.var the variable you want to do historical decomposition
+    #' @return a list, containing median, average, upper bound and lower bound of the CI
+    #' @seealso [VAR$HDC.compute()]
+    #' @export
     HDC.compute.batch = function(start = NA, end = NA, which.var = NA_character_, prob = NA_real_) {
       # note: IRF and FEVD computes all, while HDC only compute the historical decomposition of "which.var"
       var.id <- which(self$var.names == which.var)

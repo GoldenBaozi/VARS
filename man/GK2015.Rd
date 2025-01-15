@@ -12,7 +12,7 @@ The data used in Gertler and Karadi (2015) paper \emph{Monetary Policy Surprises
 \item{date}{month indicator, 1979m7 - 2012m6}
 \item{logcpi}{log of USA CPI}
 \item{logip}{log of USA industrial production}
-\item{gs1}{1 year USA government bond rate, the policy variable}
+\item{gs1}{1 year USA government bond rate, the monetary policy variable}
 \item{ebp}{excess bond premium}
 \item{ff4_tc}{three month ahead monthly fed funds futures, the IV}
 }

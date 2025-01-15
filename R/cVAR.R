@@ -1,13 +1,43 @@
+#' R6 class of classic VAR
+#' @description
+#' cVAR: classic VAR model
+#' @details
+#' The `cVAR` class implements classic VAR estimation an identification.
+#' * estimation: OLS
+#' * identification: recursive and IV
+#' * inference: bootstrap
+#'
+#' @useDynLib VARS
+#' @import Rcpp
+#' @import RcppArmadillo
+#' @import R6
+#' @import stats
+#' @import tictoc
+#' @export
 cVAR <- R6::R6Class(
   "Classic VAR",
   inherit = VAR,
   public = list(
-    # leave place for other variables
+    #' @field rank store rank of OLS `XX'` matrix
     rank = NULL,
+    #' @field est.method store name of estimation method, should be "OLS"
     est.method = NULL,
+    #' @field identify.method store name of identify method, should be "recursive" or "IV"
     identify.method = NULL,
+    #' @field IV store IV data series, should be named matrix
     IV = NULL,
+    #' @field IV.provide bool, indicate whether IV is provided
     IV.provide = NULL,
+    #' @description
+    #' `cVAR` class constructor
+    #'
+    #' @param data time series data frame or names matrix
+    #' @param p.lag int, number of lags in model
+    #' @param data.IV named matrix, the IV series; the IV name should **be set as the same as the related variable name**
+    #' @param cons bool, contain constant or not in model
+    #'
+    #' @return  an R6 class, `cVAR`
+    #' @export
     initialize = function(data = NA, p.lag = NA, data.IV = NA, cons = 1) {
       super$initialize(data, p.lag, cons)
       self$rank <- (det(t(self$X) %*% self$X) != 0)
@@ -21,6 +51,12 @@ cVAR <- R6::R6Class(
         cat("* IV for variable", self$IV.provide, "provided.\n")
       }
     },
+    #' @description
+    #' estimate reduced form VAR using OLS
+    #'
+    #' @param method name of estimation method, currently only support "OLS"
+    #' @return nothing, estimation result saved in `self$beta`, `self$U` and `self$Sigma`
+    #' @export
     est = function(method = "OLS") {
       self$est.method == method
       if (!self$rank) stop("the matrix X'X not invertible")
@@ -31,6 +67,14 @@ cVAR <- R6::R6Class(
         cat("* reduced form VAR parameters estimated using OLS.\n")
       }
     },
+    #' @description
+    #' idenitfy classic VAR model using "recursive" or "IV" method, then do bootstrap
+    #' @param method identification method, should be "recursive" or "IV"
+    #' @param boot.method bootstrap method, should be "wild" or "block"
+    #' @param repeats bootstrap repeat times
+    #'
+    #' @return nothing, results saved in `self$B`, `self$eps` and `self$*.set`
+    #' @export
     identify = function(method = NA_character_, boot.method = NA_character_, repeats = 1000) {
       self$identify.method <- method
       ## identify section
@@ -71,6 +115,17 @@ cVAR <- R6::R6Class(
       self$eps.set <- boot.out$eps.set
       toc()
     },
+    #' @description
+    #' compute VAR tools, currently support IRF, FEVD and HDC
+    #' @param tool name of VAR tools to be computed
+    #' @param hor horizons
+    #' @param prob probability of CI
+    #' @param start start of interested period, only required when `tool=="HDC"'
+    #' @param end end of interested period, only required when `tool=="HDC"'
+    #' @param which.var the variable name to do HDC, only required when `tool=="HDC"'
+    #'
+    #' @return related VAR tools, returned as a list with it's average, median and upper lower bound values
+    #' @export
     tool = function(tool = NA_character_, hor = NA_integer_, prob = NA_real_, start = NA_integer_, end = NA_integer_, which.var = NA_character_) {
       if (tool == "IRF") {
         self$IRF.compute(hor = hor)
